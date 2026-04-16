@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user import LoginResponse, UserCreate, UserLogin, UserRead, UserUpdate
 from app.services.user import user_service
 
 
@@ -22,6 +22,15 @@ def get_user(user_id: int, db: Session = Depends(get_db)) -> UserRead:
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
     return user_service.create_user(db, payload)
+
+
+@router.post("/login", response_model=LoginResponse)
+def login_user(
+    payload: UserLogin,
+    db: Session = Depends(get_db),
+) -> LoginResponse:
+    user = user_service.login_user(db, payload)
+    return LoginResponse(message="Login successful", user=user)
 
 
 @router.put("/{user_id}", response_model=UserRead)

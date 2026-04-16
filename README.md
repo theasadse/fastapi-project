@@ -7,7 +7,7 @@ FastAPI project with PostgreSQL, SQLAlchemy ORM, and pgAdmin.
 1. Copy `.env.example` to `.env`.
 2. Start infrastructure with `docker compose up -d`.
 3. Install dependencies with `pip install -r requirements.txt`.
-4. Run the app with `uvicorn main:app --reload`.
+4. Run the app with `uvicorn app.main:app --reload`.
 
 ## Services
 
