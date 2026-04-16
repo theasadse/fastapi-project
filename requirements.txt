@@ -2,3 +2,5 @@ fastapi
 uvicorn[standard]
 pydantic-settings
 email-validator
+sqlalchemy
+psycopg[binary]
