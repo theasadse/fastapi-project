@@ -2,13 +2,16 @@ from fastapi import FastAPI
 
 from app.db.base import Base
 from app.db.session import engine, wait_for_db
-from app.models import user as user_model
 from app.routes.user import router as user_router
+from app.routes.category import router as category_router
+from app.routes.product import router as product_router
 from app.core.config import settings
 
 
 app = FastAPI(title=settings.app_name)
 app.include_router(user_router)
+app.include_router(category_router)
+app.include_router(product_router)
 
 
 @app.on_event("startup")

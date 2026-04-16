@@ -26,3 +26,6 @@ class User(Base):
         nullable=False,
         default=UserRole.staff,
     )
+
+
+    
