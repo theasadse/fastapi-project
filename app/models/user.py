@@ -1,4 +1,6 @@
 import enum
+import uuid
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from sqlalchemy import Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,7 +16,7 @@ class UserRole(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     username: Mapped[str] = mapped_column(
         String(50), unique=True, nullable=False, index=True
     )
