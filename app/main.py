@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.db.base import Base
-from app.db.session import engine
+from app.db.session import engine, wait_for_db
 from app.models import user as user_model
 from app.routes.user import router as user_router
 from app.core.config import settings
@@ -13,6 +13,7 @@ app.include_router(user_router)
 
 @app.on_event("startup")
 def on_startup() -> None:
+    wait_for_db()
     Base.metadata.create_all(bind=engine)
 
 

@@ -13,4 +13,4 @@ FastAPI project with PostgreSQL, SQLAlchemy ORM, and pgAdmin.
 
 - API: `http://127.0.0.1:8000`
 - pgAdmin: `http://127.0.0.1:5050`
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5437`
