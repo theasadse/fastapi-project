@@ -1,3 +1,4 @@
+import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
 class ProductBase(BaseModel):
@@ -5,6 +6,8 @@ class ProductBase(BaseModel):
     description: str = Field(min_length=3, max_length=255)
     price: float = Field(gt=0)
     stock: int = Field(ge=0)
+    user_id: uuid.UUID
+    category_id: uuid.UUID
 
 class ProductCreate(ProductBase):
     pass
@@ -16,7 +19,7 @@ class ProductUpdate(BaseModel):
     stock: int | None = Field(default=None, ge=0)
 
 class ProductRead(ProductBase):
-    id: int
+    id: uuid.UUID
     model_config = ConfigDict(from_attributes=True)
 
 class ProductResponse(BaseModel):

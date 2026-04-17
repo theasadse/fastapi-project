@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
@@ -15,7 +16,7 @@ def list_users(db: Session = Depends(get_db)) -> list[UserRead]:
 
 
 @router.get("/{user_id}", response_model=UserRead)
-def get_user(user_id: int, db: Session = Depends(get_db)) -> UserRead:
+def get_user(user_id: uuid.UUID, db: Session = Depends(get_db)) -> UserRead:
     return user_service.get_user(db, user_id)
 
 
@@ -35,7 +36,7 @@ def login_user(
 
 @router.put("/{user_id}", response_model=UserRead)
 def update_user(
-    user_id: int,
+    user_id: uuid.UUID,
     payload: UserUpdate,
     db: Session = Depends(get_db),
 ) -> UserRead:

@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import os
+import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -14,7 +15,7 @@ class UserService:
     def list_users(self, db: Session) -> list[User]:
         return list(db.scalars(select(User)).all())
 
-    def get_user(self, db: Session, user_id: int) -> User:
+    def get_user(self, db: Session, user_id: uuid.UUID) -> User:
         user = db.get(User, user_id)
         if user is None:
             raise HTTPException(
@@ -36,7 +37,7 @@ class UserService:
         db.refresh(user)
         return user
 
-    def update_user(self, db: Session, user_id: int, payload: UserUpdate) -> User:
+    def update_user(self, db: Session, user_id: uuid.UUID, payload: UserUpdate) -> User:
         user = self.get_user(db, user_id)
         updates = payload.model_dump(exclude_unset=True)
 
@@ -76,7 +77,7 @@ class UserService:
             )
         return user
 
-    def delete_user(self, db: Session, user_id: int) -> None:
+    def delete_user(self, db: Session, user_id: uuid.UUID) -> None:
         user = self.get_user(db, user_id)
         db.delete(user)
         db.commit()
@@ -85,7 +86,7 @@ class UserService:
         self,
         db: Session,
         username: str,
-        excluded_user_id: int | None = None,
+        excluded_user_id: uuid.UUID | None = None,
     ) -> None:
         existing_user = db.scalar(select(User).where(User.username == username))
         username_in_use = (

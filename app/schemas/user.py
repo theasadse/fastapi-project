@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import UserRole
@@ -28,7 +30,7 @@ class UserLogin(BaseModel):
 
 
 class UserRead(UserBase):
-    id: int
+    id: uuid.UUID
     model_config = ConfigDict(from_attributes=True)
 
 

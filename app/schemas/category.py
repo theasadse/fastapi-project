@@ -1,9 +1,11 @@
+import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class CategoryBase(BaseModel):
     name: str = Field(min_length=3, max_length=255)
     description: str = Field(min_length=3, max_length=255)
+    user_id: uuid.UUID
 
 
 class CategoryCreate(CategoryBase):
@@ -16,7 +18,7 @@ class CategoryUpdate(BaseModel):
 
 
 class CategoryRead(CategoryBase):
-    id: int
+    id: uuid.UUID
     model_config = ConfigDict(from_attributes=True)
 
 

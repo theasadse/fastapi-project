@@ -2,12 +2,13 @@ import hashlib
 import hmac
 import os
 
+import uuid
 from sqlalchemy.orm import Session
 from app.models import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 
 
-def get_product(db: Session, product_id: int) -> Product | None:
+def get_product(db: Session, product_id: uuid.UUID) -> Product | None:
     return db.query(Product).filter(Product.id == product_id).first()
 
 def get_products(db: Session, skip: int = 0, limit: int = 10) -> list[Product]:
@@ -19,13 +20,15 @@ def create_product(db: Session, product: ProductCreate) -> Product:
         description=product.description,
         price=product.price,
         stock=product.stock,
+        user_id=product.user_id,
+        category_id=product.category_id,
     )
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
     return db_product
 
-def update_product(db: Session, product_id: int, product: ProductUpdate) -> Product | None:
+def update_product(db: Session, product_id: uuid.UUID, product: ProductUpdate) -> Product | None:
     db_product = get_product(db, product_id)
     if not db_product:
         return None
@@ -37,7 +40,7 @@ def update_product(db: Session, product_id: int, product: ProductUpdate) -> Prod
     db.refresh(db_product)
     return db_product
 
-def delete_product(db: Session, product_id: int) -> Product | None:
+def delete_product(db: Session, product_id: uuid.UUID) -> Product | None:
     db_product = get_product(db, product_id)
     if not db_product:
         return None
