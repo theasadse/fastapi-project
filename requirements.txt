@@ -5,6 +5,7 @@ email-validator
 sqlalchemy
 psycopg[binary]
 langchain
+langchain-community
 pinecone
 python-dotenv
 langchain-classic
