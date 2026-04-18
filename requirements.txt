@@ -4,3 +4,7 @@ pydantic-settings
 email-validator
 sqlalchemy
 psycopg[binary]
+langchain
+pinecone
+python-dotenv
+langchain-classic
