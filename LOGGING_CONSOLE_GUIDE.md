@@ -42,12 +42,14 @@ These logs help you quickly identify whether startup failures are from app init,
 ## `app/routes/chat.py` (LangChain chat flow)
 
 - `chat.model_initialized`: confirms Ollama LLM object is created.
+- `chat.cache_backend`: indicates whether cache backend is `redis` or `in-memory`.
 - `chat.request_received`: tracks incoming chat requests and message size.
-- `chat.memory.loaded`: shows how many previous messages were loaded from DB memory.
+- `chat.memory.loaded`: shows message count and source (`cache` or `database`).
 - `chat.memory.loaded ... long_term_memory=True/False`: shows whether long-term memory was also loaded.
 - `chat.llm_invoke.begin`: marks start of model inference.
 - `chat.memory.saved`: confirms user+assistant messages were persisted to session memory.
 - `chat.llm_invoke.success`: shows latency and output size.
+- `chat.cache.flush_triggered`: cache write-behind batch flushed to DB.
 
 Additional long-term memory logs:
 
@@ -60,6 +62,11 @@ Additional semantic memory logs:
 - `chat.semantic_memory.saved`: automatic save of important user message.
 - `chat.semantic_memory.save_failed`: automatic semantic save failed.
 - `chat.semantic_memory.manual_saved`: manual semantic memory save endpoint called.
+
+Cache flush lifecycle logs:
+
+- `shutdown.chat_cache_flush.begin`: pending cache writes at app shutdown.
+- `shutdown.chat_cache_flush.success`: total writes flushed to DB at shutdown.
 
 These logs help measure inference time and verify memory is loaded and saved for follow-up questions.
 

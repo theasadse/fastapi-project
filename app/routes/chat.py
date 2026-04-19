@@ -21,15 +21,43 @@ from app.schemas.chat import (
     ChatResponse,
 )
 from app.services.chat import chat_memory_service
+from app.services.chat_cache import CachedChatMessage, chat_cache_service
 
 router = APIRouter(prefix="/chat", tags=["AI Chatbot"])
 logger = logging.getLogger(__name__)
+
+chat_cache_service.per_session_limit = settings.chat_cache_session_message_limit
+chat_cache_service.max_sessions = settings.chat_cache_max_sessions
+chat_cache_service.session_ttl_seconds = settings.chat_cache_session_ttl_seconds
+redis_enabled = chat_cache_service.configure_redis(
+    redis_url=settings.redis_url,
+    key_prefix=settings.chat_cache_key_prefix,
+)
 
 # Initialize the LLM here so it's loaded once and ready for requests
 llm = Ollama(model="mistral")
 embeddings_model = OllamaEmbeddings(model="mxbai-embed-large")
 logger.info("chat.model_initialized model=mistral provider=ollama")
 logger.info("chat.embedding_model_initialized model=mxbai-embed-large")
+logger.info("chat.cache_backend backend=%s", "redis" if redis_enabled else "in-memory")
+
+
+def _flush_pending_batch(db: Session, max_items: int) -> int:
+    pending = chat_cache_service.pop_pending_batch(max_items=max_items)
+    if not pending:
+        return 0
+
+    items = [(item.session_id, item.role, item.message) for item in pending]
+    return chat_memory_service.add_messages_bulk(db, items)
+
+
+def _flush_session_pending(db: Session, session_id: str) -> int:
+    pending = chat_cache_service.pop_session_pending(session_id=session_id)
+    if not pending:
+        return 0
+
+    items = [(item.session_id, item.role, item.message) for item in pending]
+    return chat_memory_service.add_messages_bulk(db, items)
 
 
 def _semantic_namespace(session_id: str) -> str:
@@ -131,7 +159,18 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
         len(payload.message),
     )
 
-    recent_messages = chat_memory_service.get_recent_messages(db, session_id=session_id, limit=12)
+    recent_messages = chat_cache_service.get_recent_messages(session_id=session_id, limit=12)
+    memory_source = "cache"
+    if not recent_messages:
+        db_recent_messages = chat_memory_service.get_recent_messages(db, session_id=session_id, limit=12)
+        warm_items = [
+            CachedChatMessage(session_id=session_id, role=item.role, message=item.message)
+            for item in db_recent_messages
+        ]
+        chat_cache_service.warm_session(session_id=session_id, messages=warm_items)
+        recent_messages = chat_cache_service.get_recent_messages(session_id=session_id, limit=12)
+        memory_source = "database"
+
     memory_count = len(recent_messages)
     long_term_memory = chat_memory_service.get_long_term_memory(db, session_id=session_id)
     long_term_memory_text = long_term_memory.memory if long_term_memory is not None else ""
@@ -151,9 +190,10 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
         )
 
     logger.info(
-        "chat.memory.loaded request_id=%s session_id=%s memory_messages=%d long_term_memory=%s semantic_memories=%d",
+        "chat.memory.loaded request_id=%s session_id=%s source=%s memory_messages=%d long_term_memory=%s semantic_memories=%d",
         request_id,
         session_id,
+        memory_source,
         memory_count,
         bool(long_term_memory_text),
         len(semantic_memories),
@@ -188,8 +228,19 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
     logger.info("chat.llm_invoke.begin request_id=%s session_id=%s", request_id, session_id)
     ai_response = llm.invoke(prompt)
 
-    chat_memory_service.add_message(db, session_id=session_id, role="user", message=payload.message)
-    chat_memory_service.add_message(db, session_id=session_id, role="assistant", message=ai_response)
+    chat_cache_service.add_message(session_id=session_id, role="user", message=payload.message)
+    chat_cache_service.add_message(session_id=session_id, role="assistant", message=ai_response)
+
+    pending_count = chat_cache_service.pending_count()
+    if pending_count >= settings.chat_cache_flush_batch_size:
+        flushed_count = _flush_pending_batch(db, settings.chat_cache_flush_batch_size)
+        logger.info(
+            "chat.cache.flush_triggered request_id=%s session_id=%s flushed=%d pending_after=%d",
+            request_id,
+            session_id,
+            flushed_count,
+            chat_cache_service.pending_count(),
+        )
 
     if _is_important_memory(payload.message):
         try:
@@ -239,6 +290,7 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
 
 @router.get("/history/{session_id}", response_model=ChatHistoryResponse)
 def get_chat_history(session_id: str, db: Session = Depends(get_db)) -> ChatHistoryResponse:
+    _flush_session_pending(db, session_id=session_id)
     messages = chat_memory_service.get_all_messages(db, session_id)
     return ChatHistoryResponse(
         session_id=session_id,
@@ -248,7 +300,9 @@ def get_chat_history(session_id: str, db: Session = Depends(get_db)) -> ChatHist
 
 @router.delete("/history/{session_id}", status_code=status.HTTP_200_OK)
 def clear_chat_history(session_id: str, db: Session = Depends(get_db)) -> dict[str, int | str]:
+    _flush_session_pending(db, session_id=session_id)
     deleted_count = chat_memory_service.clear_session(db, session_id)
+    chat_cache_service.clear_session(session_id=session_id)
     return {"session_id": session_id, "deleted_messages": deleted_count}
 
 

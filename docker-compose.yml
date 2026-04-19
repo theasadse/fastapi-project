@@ -24,6 +24,23 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
+  redis:
+    image: redis:7-alpine
+    container_name: fastapi-redis
+    ports:
+      - "6382:6379"
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: fastapi-redisinsight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    volumes:
+      - redisinsight_data:/data
+
 volumes:
   postgres_data:
   pgadmin_data:
+  redisinsight_data:

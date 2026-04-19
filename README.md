@@ -14,6 +14,8 @@ FastAPI project with PostgreSQL, SQLAlchemy ORM, and pgAdmin.
 - API: `http://127.0.0.1:8000`
 - pgAdmin: `http://127.0.0.1:5050`
 - PostgreSQL: `localhost:5437`
+- Redis: `localhost:6382`
+- RedisInsight: `http://127.0.0.1:5540`
 
 ## Chat Memory (Session-Based)
 
@@ -107,3 +109,59 @@ curl -X POST http://127.0.0.1:8000/chat/memory/semantic/asad-session/search \
 - `memory_messages_used`: short-term conversation messages used
 - `long_term_memory_used`: whether DB long-term memory was used
 - `semantic_memories_used`: number of Pinecone memories injected
+
+## Chat Caching Layer (Write-Behind)
+
+Chat now uses a bounded in-memory cache for short-term conversation context, then flushes to PostgreSQL in batches.
+
+- Fast path: `/chat/` reads recent messages from cache.
+- Miss path: if cache is empty for a session, recent messages are loaded from DB and cache is warmed.
+- Write-behind: new user/assistant messages are first appended to cache, then persisted in DB when pending writes reach `CHAT_CACHE_FLUSH_BATCH_SIZE`.
+- Consistency: `/chat/history/{session_id}` flushes pending writes for that session before reading.
+- Safety: app shutdown flushes any remaining pending writes.
+
+Environment knobs:
+
+- `REDIS_URL` (example: `redis://localhost:6382/0`)
+- `CHAT_CACHE_KEY_PREFIX` (default `chat-cache`)
+- `CHAT_CACHE_SESSION_MESSAGE_LIMIT` (default `20`)
+- `CHAT_CACHE_MAX_SESSIONS` (default `2000`)
+- `CHAT_CACHE_SESSION_TTL_SECONDS` (default `86400`)
+- `CHAT_CACHE_FLUSH_BATCH_SIZE` (default `100`)
+
+### Redis setup
+
+Start Redis with Docker Compose:
+
+```bash
+docker compose up -d redis
+```
+
+### RedisInsight GUI setup
+
+Start RedisInsight:
+
+```bash
+docker compose up -d redisinsight
+```
+
+Open:
+
+```text
+http://127.0.0.1:5540
+```
+
+In RedisInsight, add database with:
+
+- Host: `redis`
+- Port: `6379`
+- Username: _(leave empty)_
+- Password: _(leave empty unless you configure Redis auth)_
+
+If connecting from your host network instead, use:
+
+- Host: `127.0.0.1`
+- Port: `6382`
+
+If `REDIS_URL` is set and reachable, chat cache backend uses Redis.
+If Redis is not reachable, it safely falls back to in-memory cache.

@@ -7,5 +7,6 @@ psycopg[binary]
 langchain
 langchain-community
 pinecone
+redis
 python-dotenv
 langchain-classic

@@ -19,6 +19,22 @@ class ChatMemoryService:
         db.refresh(memory)
         return memory
 
+    def add_messages_bulk(
+        self,
+        db: Session,
+        items: list[tuple[str, str, str]],
+    ) -> int:
+        if not items:
+            return 0
+
+        messages = [
+            ChatMemory(session_id=session_id, role=role, message=message)
+            for session_id, role, message in items
+        ]
+        db.add_all(messages)
+        db.commit()
+        return len(messages)
+
     def get_recent_messages(
         self,
         db: Session,

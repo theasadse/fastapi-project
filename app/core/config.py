@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     pinecone_index_name: str = "fastapi-docs-local"
     chat_semantic_top_k: int = 3
     chat_semantic_namespace_prefix: str = "chat-memory"
+    redis_url: str = ""
+    chat_cache_key_prefix: str = "chat-cache"
+    chat_cache_session_message_limit: int = 20
+    chat_cache_max_sessions: int = 2000
+    chat_cache_session_ttl_seconds: int = 86400
+    chat_cache_flush_batch_size: int = 100
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
